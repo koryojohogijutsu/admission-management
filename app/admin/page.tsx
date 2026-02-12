@@ -25,7 +25,9 @@ export default function AdminPage() {
       <ul>
         {visits.map((v, i) => (
           <li key={i}>
-            {v.class_code} / {v.visitor_id}
+            visitor_id: {v.visitor_id} / class: {v.class_code ?? "-"} / 
+            入場済み: {v.entered_class ? "はい" : "いいえ"} / 
+            人数: {v.group_size}
           </li>
         ))}
       </ul>
