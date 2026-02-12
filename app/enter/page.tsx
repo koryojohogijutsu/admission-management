@@ -22,7 +22,7 @@ export default function EntrancePage() {
 
     const { error } = await supabase.from("visits").insert({
       visitor_id: visitorId,
-      group_size,
+      group_size: groupSize,
       entered_class: false,
     });
 
