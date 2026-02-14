@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { v4 as uuidv4 } from "uuid";
 
 export default function RegisterPage() {
   const [step, setStep] = useState<"complete" | "survey">("complete");
@@ -9,11 +10,16 @@ export default function RegisterPage() {
   const [transport, setTransport] = useState("");
   const router = useRouter();
 
-  // 1秒後にアンケート表示
+  // visitor_id が無ければ生成
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setStep("survey");
-    }, 1000);
+    let visitorId = localStorage.getItem("visitor_id");
+    if (!visitorId) {
+      visitorId = uuidv4();
+      localStorage.setItem("visitor_id", visitorId);
+      console.log("registerで新しいvisitor_id生成:", visitorId);
+    }
+
+    const timer = setTimeout(() => setStep("survey"), 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -25,17 +31,13 @@ export default function RegisterPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-visitor-id": visitorId, // visitor_id をヘッダで送信
+        "x-visitor-id": visitorId,
       },
-      body: JSON.stringify({
-        groupSize,
-        transport,
-      }),
+      body: JSON.stringify({ groupSize, transport }),
     });
 
     const result = await res.json();
     if (res.ok) {
-      // 送信後ホームへ
       router.push("/");
     } else {
       alert("送信エラー: " + result.error);
@@ -69,10 +71,7 @@ export default function RegisterPage() {
           <div style={{ margin: "10px 0" }}>
             <label>来場手段は？</label>
             <br />
-            <select
-              value={transport}
-              onChange={(e) => setTransport(e.target.value)}
-            >
+            <select value={transport} onChange={(e) => setTransport(e.target.value)}>
               <option value="">選択してください</option>
               <option value="walk">徒歩</option>
               <option value="bike">自転車</option>
