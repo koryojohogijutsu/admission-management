@@ -5,28 +5,29 @@ import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const [step, setStep] = useState<"complete" | "survey">("complete");
-  const [groupSize, setGroupSize] = useState<number | "">(1);
+  const [groupSize, setGroupSize] = useState(1);
   const [transport, setTransport] = useState("");
   const router = useRouter();
 
-  // visitor_id 必ず生成
+  // visitor_id がなければ生成して cookie に保存
   useEffect(() => {
-    const existing = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("visitor_id="));
+    const cookies = document.cookie.split("; ").reduce((acc: any, row) => {
+      const [key, value] = row.split("=");
+      acc[key] = value;
+      return acc;
+    }, {});
 
-    if (!existing) {
-      const newId = crypto.randomUUID();
-      document.cookie = `visitor_id=${newId}; path=/; max-age=31536000`;
-      console.log("visitor_id generated:", newId);
+    let visitorId = cookies["visitor_id"];
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      document.cookie = `visitor_id=${visitorId}; path=/; SameSite=Lax`;
+      console.log("visitor_id generated:", visitorId);
     }
   }, []);
 
-  // 1秒後アンケート表示
+  // 1秒後にアンケート表示
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setStep("survey");
-    }, 1000);
+    const timer = setTimeout(() => setStep("survey"), 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -36,10 +37,7 @@ export default function RegisterPage() {
       .find((row) => row.startsWith("visitor_id="))
       ?.split("=")[1];
 
-    if (!visitorId) {
-      alert("visitor_id がありません");
-      return;
-    }
+    if (!visitorId) return alert("visitor_id がありません");
 
     const res = await fetch("/api/register", {
       method: "POST",
@@ -47,14 +45,10 @@ export default function RegisterPage() {
         "Content-Type": "application/json",
         "x-visitor-id": visitorId,
       },
-      body: JSON.stringify({
-        groupSize: Number(groupSize),
-        transport,
-      }),
+      body: JSON.stringify({ groupSize, transport }),
     });
 
     const result = await res.json();
-
     if (res.ok) {
       router.push("/");
     } else {
@@ -82,10 +76,7 @@ export default function RegisterPage() {
               type="number"
               value={groupSize}
               min={1}
-              onChange={(e) => {
-                const value = e.target.value;
-                setGroupSize(value === "" ? "" : Number(value));
-              }}
+              onChange={(e) => setGroupSize(Number(e.target.value))}
             />
           </div>
 
