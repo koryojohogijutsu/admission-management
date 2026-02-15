@@ -2,30 +2,44 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 
 export default function RegisterPage() {
   const [step, setStep] = useState<"complete" | "survey">("complete");
-  const [groupSize, setGroupSize] = useState(1);
+  const [groupSize, setGroupSize] = useState<number | "">(1);
   const [transport, setTransport] = useState("");
   const router = useRouter();
 
-  // visitor_id が無ければ生成
+  // visitor_id 必ず生成
   useEffect(() => {
-    let visitorId = localStorage.getItem("visitor_id");
-    if (!visitorId) {
-      visitorId = uuidv4();
-      localStorage.setItem("visitor_id", visitorId);
-      console.log("registerで新しいvisitor_id生成:", visitorId);
-    }
+    const existing = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("visitor_id="));
 
-    const timer = setTimeout(() => setStep("survey"), 1000);
+    if (!existing) {
+      const newId = crypto.randomUUID();
+      document.cookie = `visitor_id=${newId}; path=/; max-age=31536000`;
+      console.log("visitor_id generated:", newId);
+    }
+  }, []);
+
+  // 1秒後アンケート表示
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStep("survey");
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
   const handleSubmit = async () => {
-    const visitorId = localStorage.getItem("visitor_id");
-    if (!visitorId) return alert("visitor_id がありません");
+    const visitorId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("visitor_id="))
+      ?.split("=")[1];
+
+    if (!visitorId) {
+      alert("visitor_id がありません");
+      return;
+    }
 
     const res = await fetch("/api/register", {
       method: "POST",
@@ -33,10 +47,14 @@ export default function RegisterPage() {
         "Content-Type": "application/json",
         "x-visitor-id": visitorId,
       },
-      body: JSON.stringify({ groupSize, transport }),
+      body: JSON.stringify({
+        groupSize: Number(groupSize),
+        transport,
+      }),
     });
 
     const result = await res.json();
+
     if (res.ok) {
       router.push("/");
     } else {
@@ -64,14 +82,20 @@ export default function RegisterPage() {
               type="number"
               value={groupSize}
               min={1}
-              onChange={(e) => setGroupSize(Number(e.target.value))}
+              onChange={(e) => {
+                const value = e.target.value;
+                setGroupSize(value === "" ? "" : Number(value));
+              }}
             />
           </div>
 
           <div style={{ margin: "10px 0" }}>
             <label>来場手段は？</label>
             <br />
-            <select value={transport} onChange={(e) => setTransport(e.target.value)}>
+            <select
+              value={transport}
+              onChange={(e) => setTransport(e.target.value)}
+            >
               <option value="">選択してください</option>
               <option value="walk">徒歩</option>
               <option value="bike">自転車</option>

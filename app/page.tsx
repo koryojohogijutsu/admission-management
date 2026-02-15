@@ -1,45 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import QRScanner from "@/components/QRScanner";
-import { v4 as uuidv4 } from "uuid"; // UUID生成用
 
 export default function Home() {
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState("");
 
-  // visitor_id が無ければ生成
+  // visitor_id がなければ生成
   useEffect(() => {
-    const existing = localStorage.getItem("visitor_id");
+    const existing = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("visitor_id="));
+
     if (!existing) {
-      const newId = uuidv4();
-      localStorage.setItem("visitor_id", newId);
-      console.log("新しいvisitor_id生成:", newId);
+      const newId = crypto.randomUUID();
+      document.cookie = `visitor_id=${newId}; path=/; max-age=31536000`;
+      console.log("visitor_id generated:", newId);
     }
   }, []);
 
-  const handleScan = async (classCode: string) => {
-    setMessage("登録中...");
-
-    const visitorId = localStorage.getItem("visitor_id");
-    if (!visitorId) {
-      setMessage("❌ visitor_id がありません");
+  const handleScan = async (classCode: string | null) => {
+    if (!classCode) {
+      setMessage("QRが読み取れませんでした");
       return;
     }
 
-    const res = await fetch("/api/enter-class", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-visitor-id": visitorId,
-      },
-      body: JSON.stringify({ classCode }),
-    });
+    try {
+      setMessage("登録中...");
 
-    if (res.ok) {
-      setMessage("✅ クラス入場完了！");
-    } else {
-      setMessage("❌ エラーが発生しました");
+      const res = await fetch("/api/enter-class", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ classCode }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        setMessage("✅ クラス入場完了！");
+      } else {
+        setMessage("❌ エラー: " + result.error);
+      }
+
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ 通信エラー");
     }
 
     setScanning(false);
@@ -52,7 +60,11 @@ export default function Home() {
       {!scanning && (
         <button
           onClick={() => setScanning(true)}
-          style={{ padding: "15px 30px", fontSize: "18px", cursor: "pointer" }}
+          style={{
+            padding: "15px 30px",
+            fontSize: "18px",
+            cursor: "pointer",
+          }}
         >
           QRを読み込む
         </button>
