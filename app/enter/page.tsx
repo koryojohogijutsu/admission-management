@@ -7,14 +7,14 @@ export default function EnterPage() {
   useEffect(() => {
     const scanner = new Html5QrcodeScanner(
       "reader",
-      {
-        fps: 10,
-        qrbox: 250,
-      },
+      { fps: 10, qrbox: 250 },
       false
     );
 
     const handleScan = async (decodedText: string) => {
+      console.log("QR成功:", decodedText);
+      alert("QRは読み取れている");
+
       try {
         const res = await fetch("/api/enter-class", {
           method: "POST",
@@ -24,23 +24,22 @@ export default function EnterPage() {
           body: JSON.stringify({ classCode: decodedText }),
         });
 
-        const data = await res.json();
+        console.log("status:", res.status);
 
-        if (!res.ok) {
-          alert("エラー: " + data.error);
-          return;
-        }
+        const text = await res.text();
+        console.log("response:", text);
 
-        alert("入場が完了しました");
-
-        scanner.clear(); // スキャン停止
+        alert("APIまで到達している");
 
       } catch (error) {
-        alert("通信エラーが発生しました");
+        console.error(error);
+        alert("通信エラー");
       }
     };
 
-    scanner.render(handleScan, () => {});
+    scanner.render(handleScan, (err) => {
+      console.log("scan失敗:", err);
+    });
 
     return () => {
       scanner.clear().catch(() => {});
