@@ -1,24 +1,56 @@
-const handleScan = async (decodedText: string) => {
-  try {
-    const res = await fetch("/api/enter-class", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+"use client";
+
+import { Html5QrcodeScanner } from "html5-qrcode";
+import { useEffect } from "react";
+
+export default function EnterPage() {
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner(
+      "reader",
+      {
+        fps: 10,
+        qrbox: 250,
       },
-      body: JSON.stringify({ classCode: decodedText }),
-    });
+      false
+    );
 
-    const data = await res.json();
+    const handleScan = async (decodedText: string) => {
+      try {
+        const res = await fetch("/api/enter-class", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ classCode: decodedText }),
+        });
 
-    if (!res.ok) {
-      alert("エラー: " + data.error);
-      return;
-    }
+        const data = await res.json();
 
-    // ✅ 成功時
-    alert("入場が完了しました");
+        if (!res.ok) {
+          alert("エラー: " + data.error);
+          return;
+        }
 
-  } catch (error) {
-    alert("通信エラーが発生しました");
-  }
-};
+        alert("入場が完了しました");
+
+        scanner.clear(); // スキャン停止
+
+      } catch (error) {
+        alert("通信エラーが発生しました");
+      }
+    };
+
+    scanner.render(handleScan, () => {});
+
+    return () => {
+      scanner.clear().catch(() => {});
+    };
+  }, []);
+
+  return (
+    <div style={{ textAlign: "center", padding: "20px" }}>
+      <h1>入場QR読み取り</h1>
+      <div id="reader" style={{ width: "300px", margin: "auto" }} />
+    </div>
+  );
+}
