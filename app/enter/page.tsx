@@ -14,7 +14,7 @@ export default function EnterPage() {
     );
 
     const handleScan = async (decodedText: string) => {
-      setErrorMessage(""); // エラー初期化
+      setErrorMessage("");
 
       try {
         const res = await fetch("/api/enter-class", {
@@ -32,15 +32,19 @@ export default function EnterPage() {
           return;
         }
 
-        // ✅ 成功時のみalert
+        // ✅ 成功時のみ
         alert("入場完了");
 
-      } catch (error) {
+      } catch {
         setErrorMessage("通信エラーが発生しました");
       }
     };
 
-    scanner.render(handleScan);
+    // ★ 第2引数を追加（必須）
+    scanner.render(
+      handleScan,
+      () => {} // 読み取り失敗時は何もしない
+    );
 
     return () => {
       scanner.clear().catch(() => {});
