@@ -8,13 +8,14 @@ export default function EnterPage() {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
-    // 既に初期化されている場合は何もしない（React 18の2重実行対策）
-    if (scannerRef.current) return;
+    // マウント時に要素が存在するか確認
+    const container = document.getElementById("reader");
+    if (!container || scannerRef.current) return;
 
     const scanner = new Html5QrcodeScanner(
       "reader",
       { fps: 10, qrbox: 250 },
-      /* verbose= */ false
+      false
     );
     scannerRef.current = scanner;
 
@@ -34,27 +35,26 @@ export default function EnterPage() {
         const data = await res.json();
 
         if (!res.ok) {
-          setStatusMessage({ 
-            text: `エラー: ${data.error || "入場できません"}`, 
-            isError: true 
-          });
+          setStatusMessage({ text: `エラー: ${data.error || "入場できません"}`, isError: true });
         } else {
           setStatusMessage({ text: "✅ 入場完了しました！", isError: false });
+          
+          // 成功時、3秒後にメッセージを消して次の人を待ち受ける
+          setTimeout(() => {
+            setStatusMessage({ text: "", isError: false });
+          }, 3000);
         }
       } catch (err) {
         setStatusMessage({ text: "❌ 通信エラーが発生しました", isError: true });
       } finally {
-        // 2秒後に次のスキャンを可能にする
+        // 1.5秒後にスキャン判定のみ再開
         setTimeout(() => {
           isProcessing.current = false;
-          // 成功メッセージをクリアしたい場合はここで行う
-        }, 2000);
+        }, 1500);
       }
     };
 
-    scanner.render(handleScan, (error) => {
-      // 読み取り失敗（QRが枠に入っていない等）はログを出さない
-    });
+    scanner.render(handleScan, () => {});
 
     return () => {
       if (scannerRef.current) {
@@ -67,12 +67,12 @@ export default function EnterPage() {
 
   return (
     <div style={{ textAlign: "center", padding: "20px", maxWidth: "500px", margin: "auto" }}>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: "20px" }}>入場QRスキャナー</h1>
+      <h1 style={{ fontSize: "1.2rem", fontWeight: "bold", marginBottom: "20px" }}>
+        入場QRスキャナー
+      </h1>
       
-      {/* 読み取りエリア */}
-      <div id="reader" style={{ width: "100%", borderRadius: "10px", overflow: "hidden" }} />
+      <div id="reader" style={{ width: "100%", borderRadius: "12px", overflow: "hidden", border: "1px solid #ddd" }} />
 
-      {/* ステータス表示 */}
       {statusMessage.text && (
         <div style={{
           marginTop: "20px",
@@ -81,15 +81,11 @@ export default function EnterPage() {
           backgroundColor: statusMessage.isError ? "#ffebee" : "#e8f5e9",
           color: statusMessage.isError ? "#c62828" : "#2e7d32",
           fontWeight: "bold",
-          border: `1px solid ${statusMessage.isError ? "#ef9a9a" : "#a5d6a7"}`
+          transition: "all 0.3s ease"
         }}>
           {statusMessage.text}
         </div>
       )}
-
-      <p style={{ marginTop: "15px", fontSize: "0.9rem", color: "#666" }}>
-        QRコードをカメラにかざしてください
-      </p>
     </div>
   );
 }
