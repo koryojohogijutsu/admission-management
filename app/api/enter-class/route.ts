@@ -3,41 +3,39 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   try {
-    const { classCode } = await req.json();
+    const body = await req.json();
+    console.log("BODY:", body);
 
-    if (!classCode) {
-      return NextResponse.json({ error: "classCode missing" }, { status: 400 });
-    }
-
-    // x-visitor-id ヘッダから取得
     const visitorId = req.headers.get("x-visitor-id");
+    console.log("VISITOR ID:", visitorId);
+
+    console.log("ENV URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log("ENV KEY:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "OK" : "MISSING");
+
     if (!visitorId) {
       return NextResponse.json({ error: "visitor_id missing" }, { status: 400 });
     }
 
-    // Supabase クライアントを Service Role Key で初期化
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY! // secret key を必ず使用
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data, error } = await supabase
-      .from("visits")
-      .insert({
-        visitor_id: visitorId,
-        class_code: classCode,
-        entered_at: new Date().toISOString(),
-      });
+    const { error } = await supabase.from("visits").insert({
+      visitor_id: visitorId,
+      class_code: body.classCode,
+      entered_at: new Date().toISOString(),
+    });
 
     if (error) {
-      console.error("Supabase insert error:", error.message);
+      console.error("SUPABASE ERROR:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true });
 
-  } catch (err: any) {
-    console.error("Server error:", err);
+  } catch (err) {
+    console.error("SERVER ERROR:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
