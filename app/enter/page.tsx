@@ -10,17 +10,14 @@ export default function Page() {
 
   const [error, setError] = useState<string | null>(null);
 
-  // QR読み取り成功時
   const handleScan = async (decodedText: string) => {
-    if (scanningRef.current) return; // 二重実行防止
+    if (scanningRef.current) return;
     scanningRef.current = true;
 
     try {
       const res = await fetch("/api/enter-class", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ classCode: decodedText }),
       });
 
@@ -32,13 +29,13 @@ export default function Page() {
         return;
       }
 
-      // ✅ 成功時：これだけ alert
       alert(`${decodedText} 入場完了！`);
 
-      // カメラ停止
       if (scannerRef.current) {
+        // stopはPromiseを返すのでawaitしてOK
         await scannerRef.current.stop();
-        await scannerRef.current.clear();
+        // clearはvoidなのでawaitを外す
+        scannerRef.current.clear();
         scannerRef.current = null;
       }
 
@@ -49,7 +46,7 @@ export default function Page() {
   };
 
   useEffect(() => {
-    if (startedRef.current) return; // 二重起動防止
+    if (startedRef.current) return;
     startedRef.current = true;
 
     const scanner = new Html5Qrcode("reader");
@@ -60,7 +57,7 @@ export default function Page() {
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
         handleScan,
-        () => {} // 必須のエラーコールバック
+        () => {}
       )
       .catch(() => {
         setError("カメラを起動できませんでした");
@@ -69,7 +66,8 @@ export default function Page() {
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear().catch(() => {});
+        // .catch() を削除
+        scannerRef.current.clear();
         scannerRef.current = null;
       }
     };
@@ -78,19 +76,9 @@ export default function Page() {
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
       <h1>入場QRスキャン</h1>
-
       <div id="reader" style={{ width: "300px", margin: "auto" }} />
-
       {error && (
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "10px",
-            backgroundColor: "#f44336",
-            color: "white",
-            borderRadius: "8px",
-          }}
-        >
+        <div style={{ marginTop: "20px", padding: "10px", backgroundColor: "#f44336", color: "white", borderRadius: "8px" }}>
           {error}
         </div>
       )}
