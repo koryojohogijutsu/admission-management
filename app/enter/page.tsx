@@ -63,7 +63,7 @@ export default function EnterPage() {
       scanner.clear().catch(() => {});
       scannerRef.current = null;
     };
-  }, [isScanning]);
+  }, []);
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
