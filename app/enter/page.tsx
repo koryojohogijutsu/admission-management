@@ -1,80 +1,59 @@
 "use client";
 
-import { Html5QrcodeScanner } from "html5-qrcode";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 
-export default function EnterPage() {
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isScanning, setIsScanning] = useState(false); // 二重防止
+export default function ScannerComponent() {
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isRunningRef = useRef(false); // 二重起動防止
 
   useEffect(() => {
-    if (scannerRef.current) return; // ★ 二重起動防止
+    const startScanner = async () => {
+      if (isRunningRef.current) return; // 二重起動防止
+      isRunningRef.current = true;
 
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      { fps: 10, qrbox: 250 },
-      false
-    );
-
-    scannerRef.current = scanner;
-
-    const handleScan = async (decodedText: string) => {
-      if (isScanning) return; // ★ 二重読み取り防止
-      setIsScanning(true);
-      setErrorMessage("");
+      const scanner = new Html5Qrcode("reader");
+      scannerRef.current = scanner;
 
       try {
-        const res = await fetch("/api/enter-class", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          async (decodedText) => {
+            try {
+              // 読み取り停止
+              await scanner.stop();
+              await scanner.clear();
+              scannerRef.current = null;
+              isRunningRef.current = false;
+
+              // 成功ポップ
+              alert(`${decodedText} 入場完了！`);
+            } catch (err) {
+              console.error("停止エラー:", err);
+            }
           },
-          body: JSON.stringify({ classCode: decodedText }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          setErrorMessage(data.error || "エラーが発生しました");
-          setIsScanning(false);
-          return;
-        }
-
-        // ✅ 読み取った文字列付きポップ
-        alert(`${decodedText} 入場完了！`);
-
-        // 読み取り停止（完全停止）
-        await scanner.clear();
-        scannerRef.current = null;
-
-      } catch {
-        setErrorMessage("通信エラーが発生しました");
-        setIsScanning(false);
+          (errorMessage) => {
+            // 読み取り失敗時（表示しない）
+          }
+        );
+      } catch (err) {
+        console.error("カメラ起動エラー:", err);
+        isRunningRef.current = false;
       }
     };
 
-    scanner.render(
-      handleScan,
-      () => {} // エラー無視
-    );
+    startScanner();
 
     return () => {
-      scanner.clear().catch(() => {});
-      scannerRef.current = null;
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+        isRunningRef.current = false;
+      }
     };
   }, []);
 
-  return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
-      <h1>入場QR読み取り</h1>
-      <div id="reader" style={{ width: "300px", margin: "auto" }} />
-
-      {errorMessage && (
-        <p style={{ color: "red", marginTop: "20px" }}>
-          {errorMessage}
-        </p>
-      )}
-    </div>
-  );
+  return <div id="reader" style={{ width: "100%" }} />;
 }
