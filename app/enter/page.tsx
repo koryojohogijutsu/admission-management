@@ -69,7 +69,7 @@ export default function Page() {
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear().catch(() => {});
+        scannerRef.current.clear();
         scannerRef.current = null;
       }
     };
