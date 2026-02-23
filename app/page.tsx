@@ -5,7 +5,6 @@ import QRScanner from "@/components/QRScanner";
 
 export default function Home() {
   const [scanning, setScanning] = useState(false);
-  const [message, setMessage] = useState("");
 
   // visitor_id がなければ生成して cookie に保存
   useEffect(() => {
@@ -24,33 +23,35 @@ export default function Home() {
   }, []);
 
   const handleScan = async (classCode: string) => {
-    setMessage("登録中...");
-
     const visitorId = document.cookie
       .split("; ")
       .find((row) => row.startsWith("visitor_id="))
       ?.split("=")[1];
 
     if (!visitorId) {
-      setMessage("❌ visitor_id がありません");
+      alert("visitor_id がありません");
       setScanning(false);
       return;
     }
 
-    const res = await fetch("/api/enter-class", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-visitor-id": visitorId, // API にも同じ ID を送る
-      },
-      body: JSON.stringify({ classCode }),
-    });
+    try {
+      const res = await fetch("/api/enter-class", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-visitor-id": visitorId,
+        },
+        body: JSON.stringify({ classCode }),
+      });
 
-    if (res.ok) {
-      setMessage("✅ クラス入場完了！");
-    } else {
-      const data = await res.json();
-      setMessage("❌ エラー: " + (data.error || "不明"));
+      if (res.ok) {
+        alert("クラス入場完了！");
+      } else {
+        const data = await res.json();
+        alert("エラー: " + (data.error || "不明なエラー"));
+      }
+    } catch (error) {
+      alert("通信エラーが発生しました");
     }
 
     setScanning(false);
@@ -70,8 +71,6 @@ export default function Home() {
       )}
 
       {scanning && <QRScanner onScan={handleScan} />}
-
-      <p style={{ marginTop: "20px" }}>{message}</p>
     </main>
   );
 }
