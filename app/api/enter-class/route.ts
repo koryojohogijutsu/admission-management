@@ -1,41 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { classCode, peopleCount } = await req.json();
+    const body = await req.json();
+    console.log("BODY:", body);
+
     const visitorId = req.headers.get("x-visitor-id");
+    console.log("VISITOR ID:", visitorId);
+
+    console.log("ENV URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log("ENV KEY:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "OK" : "MISSING");
 
     if (!visitorId) {
-      return NextResponse.json({ error: "visitor_idなし" }, { status: 400 });
+      return NextResponse.json({ error: "visitor_id missing" }, { status: 400 });
     }
 
-    if (!peopleCount || peopleCount < 1) {
-      return NextResponse.json({ error: "人数が不正" }, { status: 400 });
-    }
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    // 同じ行を人数分作る
-    const rows = Array.from({ length: peopleCount }).map(() => ({
-      class_code: classCode,
+    const { error } = await supabase.from("visits").insert({
       visitor_id: visitorId,
-    }));
-
-    const { error } = await supabase
-      .from("survey_responses")
-      .insert(rows);
+      class_code: body.classCode,
+      entered_at: new Date().toISOString(),
+    });
 
     if (error) {
+      console.error("SUPABASE ERROR:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
 
-  } catch {
-    return NextResponse.json({ error: "サーバーエラー" }, { status: 500 });
+  } catch (err) {
+    console.error("SERVER ERROR:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
