@@ -6,7 +6,7 @@ import QRScanner from "@/components/QRScanner";
 export default function Home() {
   const [scanning, setScanning] = useState(false);
 
-  // visitor_id がなければ生成して cookie に保存
+  // visitor_id 生成
   useEffect(() => {
     const cookies = document.cookie.split("; ").reduce((acc: any, row) => {
       const [key, value] = row.split("=");
@@ -18,11 +18,13 @@ export default function Home() {
     if (!visitorId) {
       visitorId = crypto.randomUUID();
       document.cookie = `visitor_id=${visitorId}; path=/; SameSite=Lax`;
-      console.log("visitor_id generated:", visitorId);
     }
   }, []);
 
   const handleScan = async (classCode: string) => {
+    if (!scanning) return;   // 二重防止
+    setScanning(false);      // まず止める（無限alert防止）
+
     const visitorId = document.cookie
       .split("; ")
       .find((row) => row.startsWith("visitor_id="))
@@ -30,7 +32,6 @@ export default function Home() {
 
     if (!visitorId) {
       alert("visitor_id がありません");
-      setScanning(false);
       return;
     }
 
@@ -48,13 +49,11 @@ export default function Home() {
         alert("クラス入場完了！");
       } else {
         const data = await res.json();
-        alert("エラー: " + (data.error || "不明なエラー"));
+        alert("エラー: " + (data.error || "不明"));
       }
-    } catch (error) {
+    } catch {
       alert("通信エラーが発生しました");
     }
-
-    setScanning(false);
   };
 
   return (
