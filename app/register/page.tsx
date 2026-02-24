@@ -60,7 +60,7 @@ export default function RegisterPage() {
     <main style={{ padding: "20px", textAlign: "center" }}>
       {step === "complete" && (
         <div>
-          <h1>🎉 入場完了</h1>
+          <h1>入場完了</h1>
           <p>アンケートを準備しています...</p>
         </div>
       )}
@@ -72,12 +72,16 @@ export default function RegisterPage() {
           <div style={{ margin: "10px 0" }}>
             <label>何人で来ましたか？</label>
             <br />
-            <input
-              type="number"
+            <select
               value={groupSize}
-              min={1}
               onChange={(e) => setGroupSize(Number(e.target.value))}
-            />
+            >
+              {Array.from({ length: 99 }, (_, i) => i + 1).map((num) => (
+                <option key={num} value={num}>
+                  {num}人
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ margin: "10px 0" }}>
