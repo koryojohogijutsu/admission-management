@@ -1,29 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import QRScanner from "@/components/QRScanner";
 
 export default function Home() {
   const [scanning, setScanning] = useState(false);
   const router = useRouter();
-
-  // visitor_id がなければ生成
-  useEffect(() => {
-    const cookies = document.cookie.split("; ").reduce((acc: any, row) => {
-      const [key, value] = row.split("=");
-      acc[key] = value;
-      return acc;
-    }, {});
-
-    let visitorId = cookies["visitor_id"];
-
-    if (!visitorId) {
-      visitorId = crypto.randomUUID();
-      document.cookie = `visitor_id=${visitorId}; path=/; SameSite=Lax`;
-      console.log("visitor_id generated:", visitorId);
-    }
-  }, []);
 
   const handleScan = async (classCode: string) => {
     const visitorId = document.cookie
@@ -33,7 +16,6 @@ export default function Home() {
 
     if (!visitorId) {
       alert("visitor_id がありません");
-      setScanning(false);
       return;
     }
 
@@ -48,13 +30,13 @@ export default function Home() {
       });
 
       if (res.ok) {
-        alert("入場完了：" + classCode);
+        alert("入場が完了しました：" + classCode);
       } else {
         const data = await res.json();
-        alert("エラー：" + (data.error || "不明"));
+        alert("エラー: " + (data.error || "不明"));
       }
-    } catch (err) {
-      alert("通信エラー");
+    } catch {
+      alert("通信エラーが発生しました");
     }
 
     setScanning(false);
@@ -75,7 +57,7 @@ export default function Home() {
 
       {scanning && <QRScanner onScan={handleScan} />}
 
-      {/* 投票ページへ遷移 */}
+      {/* ▼ ここを追加 */}
       <div style={{ marginTop: "40px" }}>
         <button
           onClick={() => router.push("/vote")}
