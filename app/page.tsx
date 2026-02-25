@@ -1,31 +1,35 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import QRScanner from "@/components/QRScanner";
-import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [scanning, setScanning] = useState(false);
-  const [alerted, setAlerted] = useState(false);
-  const hasScanned = useRef(false);
-  const router = useRouter();
 
-  // QRを読み込んだとき
+  // visitor_id をクライアント側で生成
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const cookies = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("visitor_id="));
+
+    if (!cookies) {
+      const visitorId = crypto.randomUUID();
+      document.cookie = `visitor_id=${visitorId}; path=/; SameSite=Lax`;
+      console.log("visitor_id generated:", visitorId);
+    }
+  }, []);
+
   const handleScan = async (classCode: string) => {
-    if (hasScanned.current) return; // 二重読み取り防止
-    hasScanned.current = true;
-
-    setScanning(false);
-
-    // visitor_idを取得
-    let visitorId = document.cookie
+    const visitorId = document.cookie
       .split("; ")
       .find((row) => row.startsWith("visitor_id="))
       ?.split("=")[1];
 
     if (!visitorId) {
-      visitorId = crypto.randomUUID();
-      document.cookie = `visitor_id=${visitorId}; path=/`;
+      alert("visitor_id がありません");
+      return;
     }
 
     try {
@@ -39,27 +43,16 @@ export default function Home() {
       });
 
       if (res.ok) {
-        // cookieに保存
-        document.cookie = `class_code=${classCode}; path=/`;
-
-        if (!alerted) {
-          alert("入場完了: " + classCode);
-          setAlerted(true);
-        }
+        alert("入場完了：" + classCode);
       } else {
         const data = await res.json();
         alert("エラー: " + (data.error || "不明"));
-        hasScanned.current = false;
       }
     } catch {
       alert("通信エラーが発生しました");
-      hasScanned.current = false;
     }
-  };
 
-  // 投票ページに遷移
-  const goToVote = () => {
-    router.push("/vote-password"); // パスワード確認ページ
+    setScanning(false);
   };
 
   return (
@@ -67,30 +60,36 @@ export default function Home() {
       <h1>クラス入場</h1>
 
       {!scanning && (
-        <button
-          onClick={() => setScanning(true)}
-          style={{ padding: "15px 30px", fontSize: "18px", cursor: "pointer" }}
-        >
-          QRを読み込む
-        </button>
+        <>
+          <button
+            onClick={() => setScanning(true)}
+            style={{
+              padding: "15px 30px",
+              fontSize: "18px",
+              cursor: "pointer",
+              marginBottom: "20px"
+            }}
+          >
+            QRを読み込む
+          </button>
+
+          <br />
+
+          <a href="/vote-password">
+            <button
+              style={{
+                padding: "10px 25px",
+                fontSize: "16px",
+                cursor: "pointer"
+              }}
+            >
+              投票はこちら
+            </button>
+          </a>
+        </>
       )}
 
       {scanning && <QRScanner onScan={handleScan} />}
-
-      {/* QRを読み込んだら投票ページへ */}
-      {document.cookie.includes("class_code") && !scanning && (
-        <button
-          onClick={goToVote}
-          style={{
-            marginTop: "20px",
-            padding: "15px 30px",
-            fontSize: "18px",
-            cursor: "pointer",
-          }}
-        >
-          投票はこちら
-        </button>
-      )}
     </main>
   );
 }
