@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import QRScanner from "@/components/QRScanner";
 
@@ -8,7 +8,16 @@ export default function Home() {
   const [scanning, setScanning] = useState(false);
   const router = useRouter();
 
+  // ★ 追加：連続実行防止フラグ
+  const hasScanned = useRef(false);
+
   const handleScan = async (classCode: string) => {
+    // すでに実行済みなら何もしない
+    if (hasScanned.current) return;
+    hasScanned.current = true;
+
+    setScanning(false); // ← まず止める（超重要）
+
     const visitorId = document.cookie
       .split("; ")
       .find((row) => row.startsWith("visitor_id="))
@@ -38,8 +47,6 @@ export default function Home() {
     } catch {
       alert("通信エラーが発生しました");
     }
-
-    setScanning(false);
   };
 
   return (
@@ -48,7 +55,10 @@ export default function Home() {
 
       {!scanning && (
         <button
-          onClick={() => setScanning(true)}
+          onClick={() => {
+            hasScanned.current = false; // ← 再スキャン時にリセット
+            setScanning(true);
+          }}
           style={{ padding: "15px 30px", fontSize: "18px", cursor: "pointer" }}
         >
           QRを読み込む
@@ -57,7 +67,6 @@ export default function Home() {
 
       {scanning && <QRScanner onScan={handleScan} />}
 
-      {/* ▼ ここを追加 */}
       <div style={{ marginTop: "40px" }}>
         <button
           onClick={() => router.push("/vote")}
