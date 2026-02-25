@@ -1,24 +1,52 @@
-import { NextResponse } from "next/server";
+"use client";
 
-export async function POST(req: Request) {
-  const { voteCode } = await req.json();
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-  // 環境変数に保存しておく
-  const correctVotecode = process.env.VOTE_CODE;
+export default function VoteAuthPage() {
+  const [voteCode, setVotecode] = useState("");
+  const router = useRouter();
 
-  if (!voteCode) {
-    return NextResponse.json(
-      { error: "投票コード未入力" },
-      { status: 400 }
-    );
-  }
+  const handleLogin = async () => {
+    const res = await fetch("/api/vote-auth", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ voteCode }),
+    });
 
-  if (voteCode !== correctVotecode) {
-    return NextResponse.json(
-      { error: "投票コードが違います" },
-      { status: 401 }
-    );
-  }
+    if (res.ok) {
+      router.push("/vote");
+    } else {
+      alert("投票コードが違います");
+    }
+  };
 
-  return NextResponse.json({ success: true });
+  return (
+    <main style={{ padding: "40px", textAlign: "center" }}>
+      <h1>投票コード入力</h1>
+
+      <input
+        type="password"
+        value={voteCode}
+        onChange={(e) => setVotecode(e.target.value)}
+        placeholder="投票コードを入力"
+        style={{ padding: "10px", fontSize: "16px" }}
+      />
+
+      <br /><br />
+
+      <button
+        onClick={handleLogin}
+        style={{
+          padding: "10px 20px",
+          fontSize: "16px",
+          cursor: "pointer",
+        }}
+      >
+        確認
+      </button>
+    </main>
+  );
 }
