@@ -22,8 +22,8 @@ export default function Home() {
   }, []);
 
   const handleScan = async (classCode: string) => {
-    if (!scanning) return;   // 二重防止
-    setScanning(false);      // まず止める（無限alert防止）
+    if (!scanning) return;
+    setScanning(false);
 
     const visitorId = document.cookie
       .split("; ")
@@ -46,7 +46,7 @@ export default function Home() {
       });
 
       if (res.ok) {
-        alert("入場が完了しました");
+        alert('入場が完了しました：${classCode}');
       } else {
         const data = await res.json();
         alert("エラー: " + (data.error || "不明"));
