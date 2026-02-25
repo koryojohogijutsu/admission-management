@@ -1,11 +1,9 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import QRScanner from "@/components/QRScanner";
 
 export default function Home() {
   const [scanning, setScanning] = useState(false);
-  const router = useRouter();
 
   const hasScanned = useRef(false);
 
@@ -86,7 +84,7 @@ export default function Home() {
 
           <br />
 
-          <a href="/vote-password">
+          <a href="/vote-auth">
             <button
               style={{
                 padding: "10px 25px",
