@@ -5,6 +5,17 @@ import QRScanner from "@/components/QRScanner";
 
 export default function Home() {
   const [scanning, setScanning] = useState(false);
+  const router = useRouter();
+
+  const hasScanned = useRef(false);
+
+  const handleScan = async (classCode: string) => {
+    // すでに実行済みなら何もしない
+    if (hasScanned.current) return;
+    hasScanned.current = true;
+
+    setScanning(false);
+
 
   // visitor_id をクライアント側で生成
   useEffect(() => {
