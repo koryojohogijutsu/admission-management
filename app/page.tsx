@@ -1,19 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+// 1. useRef を追加。useRouter は next/navigation からインポート
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation"; 
 import QRScanner from "@/components/QRScanner";
 
 export default function Home() {
+  const router = useRouter();
   const [scanning, setScanning] = useState(false);
-
   const hasScanned = useRef(false);
-
-  const handleScan = async (classCode: string) => {
-    // すでに実行済みなら何もしない
-    if (hasScanned.current) return;
-    hasScanned.current = true;
-
-    setScanning(false);
-
 
   // visitor_id をクライアント側で生成
   useEffect(() => {
@@ -30,7 +24,12 @@ export default function Home() {
     }
   }, []);
 
+  // 2. 重複していた handleScan を1つに統合
   const handleScan = async (classCode: string) => {
+    // すでに実行済みなら何もしない
+    if (hasScanned.current) return;
+    hasScanned.current = true;
+
     const visitorId = document.cookie
       .split("; ")
       .find((row) => row.startsWith("visitor_id="))
@@ -38,6 +37,7 @@ export default function Home() {
 
     if (!visitorId) {
       alert("visitor_id がありません");
+      hasScanned.current = false; // 再試行できるようにリセット
       return;
     }
 
@@ -59,9 +59,10 @@ export default function Home() {
       }
     } catch {
       alert("通信エラーが発生しました");
+    } finally {
+      setScanning(false);
+      // 必要に応じて hasScanned.current = false; にして再スキャンを許可する
     }
-
-    setScanning(false);
   };
 
   return (
@@ -71,7 +72,10 @@ export default function Home() {
       {!scanning && (
         <>
           <button
-            onClick={() => setScanning(true)}
+            onClick={() => {
+              hasScanned.current = false; // スキャン開始時にフラグをリセット
+              setScanning(true);
+            }}
             style={{
               padding: "15px 30px",
               fontSize: "18px",
