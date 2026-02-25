@@ -8,7 +8,7 @@ export default function VotePage() {
   const [classes, setClasses] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
 
-  const EXIT_PASSWORD = "koryo1155";
+  const EXIT_PASSWORD = "kakou";
 
   const getVisitorId = () =>
     document.cookie

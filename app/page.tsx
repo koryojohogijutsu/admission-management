@@ -1,31 +1,31 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 import QRScanner from "@/components/QRScanner";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [scanning, setScanning] = useState(false);
+  const [alerted, setAlerted] = useState(false);
+  const hasScanned = useRef(false);
   const router = useRouter();
 
-  // ★ 追加：連続実行防止フラグ
-  const hasScanned = useRef(false);
-
+  // QRを読み込んだとき
   const handleScan = async (classCode: string) => {
-    // すでに実行済みなら何もしない
-    if (hasScanned.current) return;
+    if (hasScanned.current) return; // 二重読み取り防止
     hasScanned.current = true;
 
-    setScanning(false); // ← まず止める（超重要）
+    setScanning(false);
 
-    const visitorId = document.cookie
+    // visitor_idを取得
+    let visitorId = document.cookie
       .split("; ")
       .find((row) => row.startsWith("visitor_id="))
       ?.split("=")[1];
 
     if (!visitorId) {
-      alert("visitor_id がありません");
-      return;
+      visitorId = crypto.randomUUID();
+      document.cookie = `visitor_id=${visitorId}; path=/`;
     }
 
     try {
@@ -39,14 +39,27 @@ export default function Home() {
       });
 
       if (res.ok) {
-        alert("入場が完了しました：" + classCode);
+        // cookieに保存
+        document.cookie = `class_code=${classCode}; path=/`;
+
+        if (!alerted) {
+          alert("入場完了: " + classCode);
+          setAlerted(true);
+        }
       } else {
         const data = await res.json();
         alert("エラー: " + (data.error || "不明"));
+        hasScanned.current = false;
       }
     } catch {
       alert("通信エラーが発生しました");
+      hasScanned.current = false;
     }
+  };
+
+  // 投票ページに遷移
+  const goToVote = () => {
+    router.push("/vote-password"); // パスワード確認ページ
   };
 
   return (
@@ -55,10 +68,7 @@ export default function Home() {
 
       {!scanning && (
         <button
-          onClick={() => {
-            hasScanned.current = false; // ← 再スキャン時にリセット
-            setScanning(true);
-          }}
+          onClick={() => setScanning(true)}
           style={{ padding: "15px 30px", fontSize: "18px", cursor: "pointer" }}
         >
           QRを読み込む
@@ -67,18 +77,20 @@ export default function Home() {
 
       {scanning && <QRScanner onScan={handleScan} />}
 
-      <div style={{ marginTop: "40px" }}>
+      {/* QRを読み込んだら投票ページへ */}
+      {document.cookie.includes("class_code") && !scanning && (
         <button
-          onClick={() => router.push("/vote")}
+          onClick={goToVote}
           style={{
-            padding: "12px 25px",
-            fontSize: "16px",
+            marginTop: "20px",
+            padding: "15px 30px",
+            fontSize: "18px",
             cursor: "pointer",
           }}
         >
           投票はこちら
         </button>
-      </div>
+      )}
     </main>
   );
 }
