@@ -3,38 +3,37 @@
 import { useEffect, useState } from "react";
 
 export default function VotePage() {
-  const [password, setPassword] = useState("");
-  const [authorized, setAuthorized] = useState(false);
   const [classes, setClasses] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
 
-  const EXIT_PASSWORD = "kakou";
-
+  // Cookieからvisitor_idを取得
   const getVisitorId = () =>
-    document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("visitor_id="))
-      ?.split("=")[1];
+    typeof document !== "undefined"
+      ? document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("visitor_id="))
+          ?.split("=")[1]
+      : null;
 
-  const handleAuth = () => {
-    if (password === EXIT_PASSWORD) {
-      setAuthorized(true);
-      fetchClasses();
-    } else {
-      alert("コードが違います");
-    }
-  };
+  // コンポーネントマウント時にクラス一覧を取得
+  useEffect(() => {
+    const fetchClasses = async () => {
+      const visitorId = getVisitorId();
+      if (!visitorId) return;
 
-  const fetchClasses = async () => {
-    const visitorId = getVisitorId();
+      try {
+        const res = await fetch("/api/get-entered-classes", {
+          headers: { "x-visitor-id": visitorId },
+        });
+        const data = await res.json();
+        setClasses(data.classCodes || []);
+      } catch (error) {
+        console.error("データの取得に失敗しました", error);
+      }
+    };
 
-    const res = await fetch("/api/get-entered-classes", {
-      headers: { "x-visitor-id": visitorId! },
-    });
-
-    const data = await res.json();
-    setClasses(data.classCodes || []);
-  };
+    fetchClasses();
+  }, []);
 
   const handleVote = async () => {
     if (!selected) {
@@ -43,12 +42,16 @@ export default function VotePage() {
     }
 
     const visitorId = getVisitorId();
+    if (!visitorId) {
+      alert("エラー：セッション情報が見つかりません");
+      return;
+    }
 
     const res = await fetch("/api/vote", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-visitor-id": visitorId!,
+        "x-visitor-id": visitorId,
       },
       body: JSON.stringify({ classCode: selected }),
     });
@@ -61,42 +64,40 @@ export default function VotePage() {
     }
   };
 
-  if (!authorized) {
-    return (
-      <main style={{ padding: 20, textAlign: "center" }}>
-        <h1>投票コード入力</h1>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <br /><br />
-        <button onClick={handleAuth}>確認</button>
-      </main>
-    );
-  }
-
   return (
     <main style={{ padding: 20, textAlign: "center" }}>
       <h1>投票</h1>
 
-      {classes.map((cls) => (
-        <div
-          key={cls}
-          onClick={() => setSelected(cls)}
-          style={{
-            margin: "10px",
-            padding: "15px",
-            border: selected === cls ? "3px solid blue" : "1px solid gray",
-            cursor: "pointer",
-          }}
-        >
-          {cls}
-        </div>
-      ))}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+        {classes.length > 0 ? (
+          classes.map((cls) => (
+            <div
+              key={cls}
+              onClick={() => setSelected(cls)}
+              style={{
+                width: "200px",
+                padding: "15px",
+                border: selected === cls ? "3px solid blue" : "1px solid gray",
+                borderRadius: "8px",
+                cursor: "pointer",
+                backgroundColor: selected === cls ? "#eef" : "white",
+              }}
+            >
+              {cls}
+            </div>
+          ))
+        ) : (
+          <p>読み込み中、または表示できるクラスがありません。</p>
+        )}
+      </div>
 
       <br />
-      <button onClick={handleVote}>送信</button>
+      <button 
+        onClick={handleVote}
+        style={{ padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}
+      >
+        送信
+      </button>
     </main>
   );
 }
