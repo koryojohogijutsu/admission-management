@@ -61,16 +61,16 @@ export default function RegisterPage() {
       {step === "complete" && (
         <div>
           <h1>入場完了</h1>
-          <p>アンケートを準備しています...</p>
+          <p>入場者登録フォームを準備しています...</p>
         </div>
       )}
 
       {step === "survey" && (
         <div>
-          <h2>アンケート</h2>
+          <h2>入場者登録フォーム</h2>
 
           <div style={{ margin: "10px 0" }}>
-            <label>何人で来ましたか？</label>
+            <label>登録人数</label>
             <br />
             <select
               value={groupSize}
@@ -85,17 +85,19 @@ export default function RegisterPage() {
           </div>
 
           <div style={{ margin: "10px 0" }}>
-            <label>来場手段は？</label>
+            <label>来場手段</label>
             <br />
             <select
               value={transport}
               onChange={(e) => setTransport(e.target.value)}
             >
               <option value="">選択してください</option>
-              <option value="walk">徒歩</option>
-              <option value="bike">自転車</option>
-              <option value="train">電車</option>
               <option value="car">車</option>
+              <option value="bike">自転車・二輪車</option>
+              <option value="train">電車</option>
+              <option value="walk">徒歩</option>
+              <option value="bus">バス</option>
+              <option value="other">その他</option>
             </select>
           </div>
 

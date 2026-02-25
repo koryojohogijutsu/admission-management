@@ -46,7 +46,7 @@ export default function Home() {
       });
 
       if (res.ok) {
-        alert("クラス入場完了！");
+        alert("入場が完了しました");
       } else {
         const data = await res.json();
         alert("エラー: " + (data.error || "不明"));
