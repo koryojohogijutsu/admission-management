@@ -1,74 +1,102 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 export default function VotePage() {
-  const [visitorId, setVisitorId] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [authorized, setAuthorized] = useState(false);
   const [classes, setClasses] = useState<string[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [status, setStatus] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
 
-  useEffect(() => {
-    const id = localStorage.getItem("visitor_id");
-    if (!id) {
-      setStatus("入場していません");
-      return;
-    }
-    setVisitorId(id);
+  const EXIT_PASSWORD = "koryo1155";
 
-    const fetchClasses = async () => {
-      const { data } = await supabase
-        .from("visits")
-        .select("class_code")
-        .eq("visitor_id", id)
-        .order("entered_at", { ascending: true });
+  const getVisitorId = () =>
+    document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("visitor_id="))
+      ?.split("=")[1];
 
-      setClasses([...new Set(data?.map((v: any) => v.class_code))]);
-    };
-
-    fetchClasses();
-  }, []);
-
-  const vote = async () => {
-    if (!visitorId || !selectedClass) return;
-
-    const { error } = await supabase.from("votes").insert({
-      visitor_id: visitorId,
-      class_code: selectedClass,
-    });
-
-    if (error) {
-      setStatus("投票エラー: " + error.message);
+  const handleAuth = () => {
+    if (password === EXIT_PASSWORD) {
+      setAuthorized(true);
+      fetchClasses();
     } else {
-      setStatus(`投票完了！クラス: ${selectedClass}`);
+      alert("コードが違います");
     }
   };
 
+  const fetchClasses = async () => {
+    const visitorId = getVisitorId();
+
+    const res = await fetch("/api/get-entered-classes", {
+      headers: { "x-visitor-id": visitorId! },
+    });
+
+    const data = await res.json();
+    setClasses(data.classCodes || []);
+  };
+
+  const handleVote = async () => {
+    if (!selected) {
+      alert("クラスを選択してください");
+      return;
+    }
+
+    const visitorId = getVisitorId();
+
+    const res = await fetch("/api/vote", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-visitor-id": visitorId!,
+      },
+      body: JSON.stringify({ classCode: selected }),
+    });
+
+    if (res.ok) {
+      alert("投票完了：" + selected);
+    } else {
+      const data = await res.json();
+      alert("エラー：" + data.error);
+    }
+  };
+
+  if (!authorized) {
+    return (
+      <main style={{ padding: 20, textAlign: "center" }}>
+        <h1>投票コード入力</h1>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <br /><br />
+        <button onClick={handleAuth}>確認</button>
+      </main>
+    );
+  }
+
   return (
-    <div>
-      <h1>投票ページ</h1>
-      {classes.length === 0 ? (
-        <p>入場クラスがありません</p>
-      ) : (
-        <>
-          <select
-            onChange={(e) => setSelectedClass(e.target.value)}
-            value={selectedClass ?? ""}
-          >
-            <option value="">選択してください</option>
-            {classes.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <button onClick={vote} disabled={!selectedClass}>
-            投票
-          </button>
-          <p>{status}</p>
-        </>
-      )}
-    </div>
+    <main style={{ padding: 20, textAlign: "center" }}>
+      <h1>投票</h1>
+
+      {classes.map((cls) => (
+        <div
+          key={cls}
+          onClick={() => setSelected(cls)}
+          style={{
+            margin: "10px",
+            padding: "15px",
+            border: selected === cls ? "3px solid blue" : "1px solid gray",
+            cursor: "pointer",
+          }}
+        >
+          {cls}
+        </div>
+      ))}
+
+      <br />
+      <button onClick={handleVote}>送信</button>
+    </main>
   );
 }
