@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from 'next/navigation';
 
 export default function VotePage() {
   const [classes, setClasses] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const router = useRouter();
 
   // Cookieからvisitor_idを取得
   const getVisitorId = () =>
