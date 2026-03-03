@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function VotePage() {
   const [classes, setClasses] = useState<string[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
   const [voteLimit, setVoteLimit] = useState<number>(0);
   const router = useRouter();
 
