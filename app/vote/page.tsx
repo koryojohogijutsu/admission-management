@@ -28,7 +28,7 @@ useEffect(() => {
       const data = await res.json();
 
       // 重複削除
-      const uniqueClasses = [...new Set(data.classCodes || [])];
+      const uniqueClasses = [...new Set(data.classCodes || [])]  as string[])];
 
       setClasses(uniqueClasses);
     } catch (error) {
