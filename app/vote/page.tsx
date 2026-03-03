@@ -94,10 +94,15 @@ useEffect(() => {
               style={{
                 width: "200px",
                 padding: "15px",
-                border: selected === cls ? "3px solid blue" : "1px solid gray",
                 borderRadius: "8px",
                 cursor: "pointer",
-                backgroundColor: selected === cls ? "#eef" : "white",
+                border: selected.includes(cls)
+                  ? "3px solid blue"
+                  : "1px solid gray",
+
+                backgroundColor: selected.includes(cls)
+                  ? "#eef"
+                  : "white",
               }}
             >
               {cls}
