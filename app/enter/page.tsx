@@ -1,99 +1,103 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import QRCode from "qrcode";
+import { createClient } from "@supabase/supabase-js";
 
-export default function Page() {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const startedRef = useRef(false);
-  const scanningRef = useRef(false);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-  const [error, setError] = useState<string | null>(null);
-
-  // QR読み取り成功時
-  const handleScan = async (decodedText: string) => {
-    if (scanningRef.current) return; // 二重実行防止
-    scanningRef.current = true;
-
-    try {
-      const res = await fetch("/api/enter-class", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ classCode: decodedText }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "エラーが発生しました");
-        scanningRef.current = false;
-        return;
-      }
-
-      // ✅ 成功時：これだけ alert
-      alert(`${decodedText} 入場完了！`);
-
-      // カメラ停止
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-        scannerRef.current = null;
-      }
-
-    } catch {
-      setError("通信エラーが発生しました");
-      scanningRef.current = false;
-    }
-  };
+export default function MyQRPage() {
+  const router = useRouter();
+  const [visitorId, setVisitorId] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
-    if (startedRef.current) return; // 二重起動防止
-    startedRef.current = true;
+    // visitor_id を取得
+    const id = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("visitor_id="))
+      ?.split("=")[1];
 
-    const scanner = new Html5Qrcode("reader");
-    scannerRef.current = scanner;
+    if (!id) {
+      router.push("/register");
+      return;
+    }
 
-    scanner
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        handleScan,
-        () => {} // 必須のエラーコールバック
+    setVisitorId(id);
+
+    // QRコード生成
+    QRCode.toDataURL(id, { width: 280, margin: 2 })
+      .then((url) => setQrDataUrl(url))
+      .catch(console.error);
+
+    // Supabase Realtime：自分のvisitor_idへの入場記録をリアルタイムで監視
+    const channel = supabase
+      .channel(`visits:${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "visits",
+          filter: `visitor_id=eq.${id}`,
+        },
+        (payload) => {
+          const classCode = payload.new.class_code;
+          setNotification(`✅ 読み取られました！\nクラス: ${classCode}`);
+          setTimeout(() => setNotification(null), 4000);
+        }
       )
-      .catch(() => {
-        setError("カメラを起動できませんでした");
-      });
+      .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear();
-        scannerRef.current = null;
-      }
+      channel.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
-      <h1>入場QRスキャン</h1>
+    <main style={{ padding: "30px 20px", textAlign: "center" }}>
+      <h1>あなたのQRコード</h1>
+      <p style={{ color: "#555", fontSize: "14px" }}>
+        係員に向けてこの画面を見せてください
+      </p>
 
-      <div id="reader" style={{ width: "300px", margin: "auto" }} />
-
-      {error && (
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "10px",
-            backgroundColor: "#f44336",
-            color: "white",
-            borderRadius: "8px",
-          }}
-        >
-          {error}
-        </div>
+      {qrDataUrl ? (
+        <img
+          src={qrDataUrl}
+          alt="QRコード"
+          style={{ margin: "20px auto", display: "block", borderRadius: "8px" }}
+        />
+      ) : (
+        <p>生成中...</p>
       )}
-    </div>
+
+      <p style={{ fontSize: "11px", color: "#aaa", marginTop: "4px" }}>
+        ID: {visitorId}
+      </p>
+
+      <button
+        onClick={() => router.push("/")}
+        style={{
+          marginTop: "30px",
+          padding: "10px 24px",
+          fontSize: "15px",
+          cursor: "pointer",
+          backgroundColor: "white",
+          color: "#555",
+          border: "1px solid #ccc",
+          borderRadius: "6px",
+        }}
+      >
+        ホームに戻る
+      </button>
+    </main>
   );
 }
