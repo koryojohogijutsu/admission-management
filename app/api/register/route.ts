@@ -8,18 +8,18 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const today = Number(process.env.FESTIVAL_DAY || 1);
   const body = await req.json();
 
-  // cookieから取得
+  // cookieからvisitor_idを取得、なければ新規生成
   const cookie = req.headers.get("cookie");
   const cookieVisitorId = cookie
     ?.split("; ")
     .find((row) => row.startsWith("visitor_id="))
     ?.split("=")[1];
 
-  let visitorId = cookieVisitorId ?? randomUUID();
+  const visitorId = cookieVisitorId ?? randomUUID();
 
+  // 既存チェック
   const { data: existing } = await supabase
     .from("visitors")
     .select("*")
@@ -27,37 +27,18 @@ export async function POST(req: Request) {
     .single();
 
   if (!existing) {
-    // 初回登録
+    // 新規登録
     await supabase.from("visitors").insert({
       visitor_id: visitorId,
-      day1: today === 1,
-      day2: today === 2,
-      vote_limit: body.voteLimit, // アンケート人数
+      group_size: body.groupSize,
+      transport: body.transport,
       created_at: new Date().toISOString(),
     });
-  } else {
-    // 2回目来場
-    if (today === 2 && !existing.day2) {
-      await supabase
-        .from("visitors")
-        .update({ day2: true })
-        .eq("visitor_id", visitorId);
-    }
-
-    return NextResponse.json({
-      success: true,
-      secondVisit: true,
-      voteLimit: existing.vote_limit,
-    });
   }
+  // 既存の場合は何もしない（再登録不要）
 
-  const response = NextResponse.json({
-    success: true,
-    secondVisit: false,
-    voteLimit: body.voteLimit,
-  });
-
-  response.cookies.set("visitor_id", visitorId, { path: "/" });
+  const response = NextResponse.json({ success: true });
+  response.cookies.set("visitor_id", visitorId, { path: "/", sameSite: "lax" });
 
   return response;
 }
