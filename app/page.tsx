@@ -12,11 +12,6 @@ export default function Home() {
       .split("; ")
       .find((row) => row.startsWith("visitor_id="))
       ?.split("=")[1];
-
-    if (!existing) {
-      const id = crypto.randomUUID();
-      document.cookie = `visitor_id=${id}; path=/; SameSite=Lax`;
-    }
   }, []);
 
   return (
