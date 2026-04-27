@@ -10,9 +10,14 @@ export default function StaffSettingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedCode = localStorage.getItem("staff_class_code");
-    if (storedCode) setSelected(storedCode);
+    // 既存のcookieから設定を読み込む
+    const stored = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("staff_class_code="))
+      ?.split("=")[1];
+    if (stored) setSelected(stored);
 
+    // クラス一覧を取得
     fetch("/api/classes")
       .then((res) => res.json())
       .then((data) => {
@@ -28,8 +33,13 @@ export default function StaffSettingsPage() {
       return;
     }
     const cls = classes.find((c) => c.code === selected);
-    localStorage.setItem("staff_class_code", selected);
-    localStorage.setItem("staff_class_label", cls?.label ?? "");
+
+    // cookieに保存（1年間有効）
+    const expires = new Date();
+    expires.setFullYear(expires.getFullYear() + 1);
+    document.cookie = `staff_class_code=${selected}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
+    document.cookie = `staff_class_label=${encodeURIComponent(cls?.label ?? "")}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
+
     router.push("/staff");
   };
 
