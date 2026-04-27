@@ -1,4 +1,4 @@
-  "use client";
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
@@ -15,15 +15,23 @@ export default function StaffPage() {
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   useEffect(() => {
-    // localStorageからクラス設定を取得
-    const code = localStorage.getItem("staff_class_code");
-    const label = localStorage.getItem("staff_class_label");
+    // cookieからクラス設定を取得
+    const code = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("staff_class_code="))
+      ?.split("=")[1];
+    const label = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("staff_class_label="))
+      ?.split("=")[1];
+
     if (!code) {
       router.push("/staff/settings");
       return;
     }
+
     setClassCode(code);
-    setClassLabel(label);
+    setClassLabel(label ? decodeURIComponent(label) : null);
   }, [router]);
 
   const handleScan = async (visitorId: string) => {
@@ -95,10 +103,7 @@ export default function StaffPage() {
             {classLabel ? `${classCode}（${classLabel}）` : classCode}
           </strong>
           　
-          <a
-            href="/staff/settings"
-            style={{ fontSize: "12px", color: "#888" }}
-          >
+          <a href="/staff/settings" style={{ fontSize: "12px", color: "#888" }}>
             変更
           </a>
         </p>
