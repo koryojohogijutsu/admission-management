@@ -1,54 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import md5 from "md5";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+type VisitorType = "smartphone" | "paper" | "student";
+type Status =
+  | { state: "loading" }
+  | { state: "ok"; visitorId: string; type: VisitorType }
+  | { state: "error"; message: string };
 
-type Visit = {
-  class_code: string;
-  entered_at: string;
-};
+// useSearchParams() は Suspense でラップが必須
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <main style={{ padding: "40px", textAlign: "center" }}>
+          <p style={{ color: "#aaa" }}>読み込み中...</p>
+        </main>
+      }
+    >
+      <HomeInner />
+    </Suspense>
+  );
+}
 
-export default function HistoryPage() {
-  const searchParams = useSearchParams();
+function HomeInner() {
   const router = useRouter();
-  const [visits, setVisits] = useState<Visit[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<Status>({ state: "loading" });
 
   useEffect(() => {
-    const vid = searchParams.get("vid");
-    if (!vid) {
-      setError("visitor_idが指定されていません");
-      setLoading(false);
+    const idParam = searchParams.get("id");
+    const cdParam = searchParams.get("cd");
+
+    // ── クエリなし：スマホ来場者 ──────────────────────
+    if (!idParam) {
+      let visitorId = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("visitor_id="))
+        ?.split("=")[1];
+
+      if (!visitorId) {
+        visitorId = crypto.randomUUID();
+        document.cookie = `visitor_id=${visitorId}; path=/; SameSite=Lax`;
+      }
+
+      setStatus({ state: "ok", visitorId, type: "smartphone" });
       return;
     }
 
-    const fetch = async () => {
-      // 入場履歴
-      const { data, error } = await supabase
-        .from("visits")
-        .select("class_code, entered_at")
-        .eq("visitor_id", vid)
-        .order("entered_at", { ascending: true });
+    // ── クエリあり：紙チケ or 前高生 ─────────────────
+    if (!cdParam) {
+      setStatus({ state: "error", message: "無効なURLです（cdパラメータがありません）" });
+      return;
+    }
 
-      if (error) {
-        setError("データの取得に失敗しました");
-      } else {
-        setVisits(data ?? []);
-      }
-      setLoading(false);
-    };
+    const isStudent = idParam.endsWith("m");
+    const numericId = isStudent ? idParam.slice(0, -1) : idParam;
+    const salt = isStudent ? "akagioroshi" : "kakouryubu";
+    const expectedHash = md5(`${numericId}${salt}`);
 
-    fetch();
+    if (expectedHash !== cdParam) {
+      setStatus({ state: "error", message: "チケットの認証に失敗しました。\nQRコードを正しく読み取ってください。" });
+      return;
+    }
+
+    // 検証OK → cdをvisitor_idとしてcookieに保存
+    const visitorId = cdParam;
+    document.cookie = `visitor_id=${visitorId}; path=/; SameSite=Lax`;
+
+    setStatus({
+      state: "ok",
+      visitorId,
+      type: isStudent ? "student" : "paper",
+    });
   }, [searchParams]);
 
-  if (loading) {
+  if (status.state === "loading") {
     return (
       <main style={{ padding: "40px", textAlign: "center" }}>
         <p style={{ color: "#aaa" }}>読み込み中...</p>
@@ -56,83 +85,85 @@ export default function HistoryPage() {
     );
   }
 
-  if (error) {
+  if (status.state === "error") {
     return (
       <main style={{ padding: "40px 20px", textAlign: "center" }}>
-        <p style={{ color: "#f44336" }}>{error}</p>
+        <div style={{ fontSize: "48px", marginBottom: "16px" }}>⚠️</div>
+        <h1 style={{ fontSize: "20px", marginBottom: "12px" }}>認証エラー</h1>
+        <p style={{ color: "#888", whiteSpace: "pre-line", fontSize: "14px" }}>
+          {status.message}
+        </p>
       </main>
     );
   }
 
+  // ── 正常表示 ───────────────────────────────────────
+  const { visitorId, type } = status;
+
+  const typeLabel =
+    type === "student" ? "前高生" :
+    type === "paper"   ? "一般来場者（紙チケ）" :
+                         "一般来場者";
+
   return (
-    <main style={{ padding: "24px 20px", maxWidth: "480px", margin: "0 auto" }}>
-      <button
-        onClick={() => router.back()}
-        style={{
-          background: "none",
-          border: "none",
-          color: "#888",
-          fontSize: "14px",
-          cursor: "pointer",
-          marginBottom: "16px",
-          padding: 0,
-        }}
-      >
-        ← 戻る
-      </button>
+    <main style={{ padding: "40px 20px", textAlign: "center" }}>
+      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>蛟龍祭</h1>
+      <p style={{ color: "#888", fontSize: "13px", marginBottom: "32px" }}>
+        {typeLabel}
+      </p>
 
-      <h1 style={{ fontSize: "22px", marginBottom: "24px" }}>あなたの履歴</h1>
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+        maxWidth: "280px",
+        margin: "0 auto",
+      }}>
+        <button
+          onClick={() => router.push("/myqr")}
+          style={{
+            padding: "16px",
+            fontSize: "17px",
+            cursor: "pointer",
+            backgroundColor: "#e10102",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+          }}
+        >
+          QRを表示する
+        </button>
 
-      {/* 入場履歴 */}
-      <section style={{ marginBottom: "32px" }}>
-        <h2 style={{ fontSize: "16px", color: "#333", marginBottom: "12px", borderBottom: "2px solid #e10102", paddingBottom: "6px" }}>
-          🏫 入場したクラス
-        </h2>
-        {visits.length === 0 ? (
-          <p style={{ color: "#aaa", fontSize: "14px" }}>まだ記録がありません</p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {visits.map((v, i) => (
-              <li
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "10px 0",
-                  borderBottom: "1px solid #f0f0f0",
-                  fontSize: "15px",
-                }}
-              >
-                <strong>{v.class_code}</strong>
-                <span style={{ color: "#888", fontSize: "13px" }}>
-                  {new Date(v.entered_at).toLocaleString("ja-JP", {
-                    month: "numeric",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <button
+          onClick={() => router.push("/vote-auth")}
+          style={{
+            padding: "14px",
+            fontSize: "16px",
+            cursor: "pointer",
+            backgroundColor: "white",
+            color: "#e10102",
+            border: "2px solid #e10102",
+            borderRadius: "8px",
+          }}
+        >
+          投票はこちら
+        </button>
 
-      {/* 投票履歴（未実装） */}
-      <section style={{ marginBottom: "32px" }}>
-        <h2 style={{ fontSize: "16px", color: "#333", marginBottom: "12px", borderBottom: "2px solid #e10102", paddingBottom: "6px" }}>
-          🗳️ 投票
-        </h2>
-        <p style={{ color: "#aaa", fontSize: "14px" }}>準備中</p>
-      </section>
-
-      {/* 謎解き履歴（未実装） */}
-      <section style={{ marginBottom: "32px" }}>
-        <h2 style={{ fontSize: "16px", color: "#333", marginBottom: "12px", borderBottom: "2px solid #e10102", paddingBottom: "6px" }}>
-          🔍 謎解き
-        </h2>
-        <p style={{ color: "#aaa", fontSize: "14px" }}>準備中</p>
-      </section>
+        <button
+          onClick={() => router.push(`/history?vid=${visitorId}`)}
+          style={{
+            padding: "14px",
+            fontSize: "16px",
+            cursor: "pointer",
+            backgroundColor: "white",
+            color: "#555",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+          }}
+        >
+          履歴を見る
+        </button>
+      </div>
     </main>
   );
 }
