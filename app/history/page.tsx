@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -15,30 +15,19 @@ type Visit = {
 };
 
 export default function HistoryPage() {
-  return (
-    <Suspense
-      fallback={
-        <main style={{ padding: "40px", textAlign: "center" }}>
-          <p style={{ color: "#aaa" }}>読み込み中...</p>
-        </main>
-      }
-    >
-      <HistoryInner />
-    </Suspense>
-  );
-}
-
-function HistoryInner() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const vid = searchParams.get("vid");
-    if (!vid) {
-      setError("visitor_idが指定されていません");
+    const visitorId = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("visitor_id="))
+      ?.split("=")[1];
+
+    if (!visitorId) {
+      setError("来場者情報が見つかりません。ホームに戻ってください。");
       setLoading(false);
       return;
     }
@@ -47,7 +36,7 @@ function HistoryInner() {
       const { data, error } = await supabase
         .from("visits")
         .select("class_code, entered_at")
-        .eq("visitor_id", vid)
+        .eq("visitor_id", visitorId)
         .order("entered_at", { ascending: true });
 
       if (error) {
@@ -59,7 +48,7 @@ function HistoryInner() {
     };
 
     fetchData();
-  }, [searchParams]);
+  }, []);
 
   if (loading) {
     return (
@@ -73,6 +62,9 @@ function HistoryInner() {
     return (
       <main style={{ padding: "40px 20px", textAlign: "center" }}>
         <p style={{ color: "#f44336" }}>{error}</p>
+        <button onClick={() => router.push("/")} style={{ marginTop: "16px", padding: "10px 20px", cursor: "pointer" }}>
+          ホームへ
+        </button>
       </main>
     );
   }
