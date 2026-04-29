@@ -41,6 +41,7 @@ export default function AdminLoginPage() {
 
   return (
     <div style={{ padding: "60px 20px", maxWidth: "360px", margin: "0 auto" }}>
+      <a href="/" style={{ fontSize: "13px", color: "#888", textDecoration: "none", display: "block", marginBottom: "16px" }}>← ホームに戻る</a>
       <h1 style={{ fontSize: "20px", marginBottom: "24px", textAlign: "center" }}>
         管理者ログイン
       </h1>
