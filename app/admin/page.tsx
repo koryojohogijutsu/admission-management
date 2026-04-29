@@ -19,6 +19,7 @@ export default function AdminPage() {
 
   return (
     <div style={{ padding: "20px" }}>
+      <a href="/" style={{ fontSize: "13px", color: "#888", textDecoration: "none" }}>← ホームに戻る</a>
       <h1>入場一覧</h1>
       <p style={{ color: "#666", fontSize: "14px" }}>{visits.length} 件</p>
 
