@@ -147,11 +147,6 @@ function HomeInner() {
         .find((row) => row.startsWith("visitor_id="))
         ?.split("=")[1];
 
-      if (!visitorId) {
-        visitorId = crypto.randomUUID();
-        document.cookie = `visitor_id=${visitorId}; path=/; SameSite=Lax`;
-      }
-
       setStatus({ state: "ok", visitorId, type: "smartphone" });
       return;
     }
