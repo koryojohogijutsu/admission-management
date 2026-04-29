@@ -40,6 +40,7 @@ export default function ClassesAdminPage() {
 
   return (
     <div style={{ padding: "20px", maxWidth: "500px" }}>
+      <a href="/" style={{ fontSize: "13px", color: "#888", textDecoration: "none" }}>← ホームに戻る</a>
       <h1>クラス管理</h1>
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
