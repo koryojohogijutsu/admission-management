@@ -142,12 +142,18 @@ function HomeInner() {
 
     // ── クエリなし：スマホ来場者 ──────────────────────
     if (!idParam) {
-      let visitorId = document.cookie
+      const visitorId = document.cookie
         .split("; ")
         .find((row) => row.startsWith("visitor_id="))
         ?.split("=")[1];
 
-      setStatus({ state: "ok", visitorId, type: "smartphone" });
+      // 修正ポイント：visitorIdが存在する場合のみセットする
+      if (visitorId) {
+        setStatus({ state: "ok", visitorId, type: "smartphone" });
+      } else {
+        // IDがない場合は、新規発行APIへ飛ばすなどの処理を想定（ここではエラーにせず待機）
+        // 必要に応じて setStatus({ state: "error", ... }) を追加してください
+      }
       return;
     }
 
